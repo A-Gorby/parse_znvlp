@@ -16,7 +16,7 @@ def form_esklp_dates(fn_list):
     esklp_dates = [re.findall(r'(?:\d\d\d\d\d\d\d\d)', fn) for fn in fn_list]
     esklp_dates = list(set([d[0] for d in esklp_dates if len(d) > 0]))
     return esklp_dates
-def parapm_form_znvlp_esklp_dicts(fn_list):
+def param_form_znvlp_esklp_dicts(fn_list):
     esklp_dates = form_esklp_dates(fn_list)
     esklp_dates_dropdown = widgets.Dropdown( options=esklp_dates) #, value=None)
     
