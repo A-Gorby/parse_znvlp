@@ -1383,8 +1383,13 @@ def proc_complex_doze(i_row, doze_group, dosage_standard_value_str,
             cnt += 1
             proc_tag3 = proc_tag3_value
             cmplx_doze_lst = [d.strip() for d in cmplx_doze_lst]
-            if re.search(r"/\s*\d+\.*\d*" , cmplx_doze_lst[-1]) is not None: # есть цифра псевдообъема 50 мг/5 мл
-                fl_pseudo_vol = True
+            # if re.search(r"/\s*\d+\.*\d*" , cmplx_doze_lst[-1]) is not None: # есть цифра псевдообъема 50 мг/5 мл
+            #     fl_pseudo_vol = True
+            # fl_pseudo_vol = False
+            for d in cmplx_doze_lst:
+                if re.search(r"/\s*\d+\.*\d*" , d) is not None: # есть цифра псевдообъема 50 мг/5 мл
+                    fl_pseudo_vol = True
+                    break
             #     b_pos = cmplx_doze_lst[-1].rfind('/')
             #     cmplx_doze_lst[-1] = cmplx_doze_lst[-1][:b_pos+1] + re.sub(r"[(\d*\.\d*)]", '', cmplx_doze_lst[-1][b_pos+1:]).strip()
             if debug: 
@@ -1392,13 +1397,44 @@ def proc_complex_doze(i_row, doze_group, dosage_standard_value_str,
                             f"cmplx_doze_lst: {cmplx_doze_lst}")
             
             if fl_pseudo_vol:
-                cmplx_doze_values_lst = [float(re.sub (r"[^(\d*\.\d*)]", '', re.sub(r"(/.*)", '',d))) for d in cmplx_doze_lst]
-                cmplx_doze_units_lst = [re.sub(r"[(\d*\.\d*)]", '', d).strip() for d in cmplx_doze_lst[:-1]]+\
-                  [re.sub(r"[(\d*\.\d*)]", '',cmplx_doze_lst[-1][:cmplx_doze_lst[-1].rfind('/')]).strip()+ \
-                  cmplx_doze_lst[-1][cmplx_doze_lst[-1].rfind('/'):].strip()]
+                # cmplx_doze_values_lst = [float(re.sub (r"[^(\d*\.\d*)]", '', re.sub(r"(/.*)", '',d))) for d in cmplx_doze_lst]
+                cmplx_doze_values_lst = [
+                        float(re.sub(re.sub (r"(\d*\.*\d)|(\d\.*\d*)", '', re.sub(r"(/.*)", '',d)).strip(), '', re.sub(r"(/.*)", '',d)).strip()) 
+                            for d in cmplx_doze_lst]
+                
+
+
+                # cmplx_doze_units_lst = [re.sub(r"[(\d*\.\d*)]", '', d).strip() for d in cmplx_doze_lst[:-1]]+\
+                #   [re.sub(r"[(\d*\.\d*)]", '',cmplx_doze_lst[-1][:cmplx_doze_lst[-1].rfind('/')]).strip()+ \
+                #   cmplx_doze_lst[-1][cmplx_doze_lst[-1].rfind('/'):].strip()]
+                cmplx_doze_units_lst = [re.sub(r"(\d*\.*\d)|(\d\.*\d*)", '', d).strip() for d in cmplx_doze_lst[:-1]]+\
+                          [re.sub(r"(\d*\.*\d)|(\d\.*\d*)", '',cmplx_doze_lst[-1][:cmplx_doze_lst[-1].rfind('/')]).strip()+ \
+                          cmplx_doze_lst[-1][cmplx_doze_lst[-1].rfind('/'):].strip()]
             else:
-                cmplx_doze_values_lst = [float(re.sub (r"[^(\d*\.\d*)]", '', d)) for d in cmplx_doze_lst]
-                cmplx_doze_units_lst = [re.sub(r"[(\d*\.\d*)]", '', d).strip() for d in cmplx_doze_lst]
+                try:
+                    # 24/08/2023
+                    # cmplx_doze_lst: '['2 МЕ', '5.5 мг/кв.см']' 
+                    # re.search(r"/\s*\d+\.*\d*" , d)
+                    # 2 МЕ+5.5 мг/кв.см
+                    # [12:22:07] [ERROR] > error element: '5.5 мг/кв.см'
+                    # [12:22:07] [ERROR] > could not convert string to float: '5.5.'
+                    # cmplx_doze_values_lst = [float(re.sub (r"[^(\d*\.\d*)]", '', d)) for d in cmplx_doze_lst]
+                    cmplx_doze_values_lst = [float(re.sub(re.sub (r"(\d*\.*\d)|(\d\.*\d*)", '', d).strip(), '', d).strip()) for d in cmplx_doze_lst]
+                    # print(re.sub (r"(\d*\.\d)|(\d\.\d*)", '', d).strip())
+                    # print(re.sub(re.sub (r"(\d*\.\d)|(\d\.\d*)", '', d).strip(), '', d).strip())
+                except Exception as err:
+                    logger.error(str(err))
+                    logger.error(f"cmplx_doze_lst: '{str(cmplx_doze_lst)}'")
+                    cmplx_doze_values_lst = []
+                    for d in cmplx_doze_lst:
+                        try:
+                            cmplx_doze_values_lst.append(float(re.sub (r"(\d*\.*\d)|(\d\.*\d*)", '', d)))
+                        except: 
+                            logger.error(f"error element: '{str(d)}'")
+                # cmplx_doze_units_lst = [re.sub(r"[(\d*\.\d*)]", '', d).strip() for d in cmplx_doze_lst]
+                
+                cmplx_doze_units_lst = [re.sub(r"(\d*\.*\d)|(\d\.*\d*)", '', d).strip() for d in cmplx_doze_lst]
+                
             # cmplx_doze_units_lst = [re.sub(r"(?<!/)[(\d*\.\d*)]", '', d).strip() for d in cmplx_doze_lst]
             # cmplx_doze_units_lst = [re.sub(r"(?<!\/)[(\d*\.\d*)]", '', d).strip() for d in cmplx_doze_lst]
             if debug: 
@@ -1472,6 +1508,8 @@ def proc_complex_doze(i_row, doze_group, dosage_standard_value_str,
                     else:
                         # dosage_standard_value, dosage_standard_unit = dosage_standard_value_empty, dosage_standard_unit_empty
                         dosage_standard_value, dosage_standard_unit, pseudo_vol = value_empty, value_empty, None
+                    if debug:
+                        print(f"dosage_standard_value: {dosage_standard_value}, dosage_standard_unit: {dosage_standard_unit}, pseudo_vol: {pseudo_vol}")
                 elif doze_group == 7:
                     if unit_types_num==2 and fst_unit in ['мг'] and last_unit in ['мг/доза']:
                         # dosage_standard_value, dosage_standard_unit = sum(cmplx_doze_values_lst), 'мг/доза'
@@ -1625,7 +1663,7 @@ def proc_complex_doze_00(i_row, doze_group, dosage_standard_value_str,
         # return cnt
         pass
 
-def apply_p5_calc_complex_doze():
+def apply_p5_calc_complex_doze(debug=False):
     global smnn_list_df, klp_list_dict_df, zvnlp_df, znvlp_date  
     logger.info("P5: Обработка сложных дозировок - start ...")
     mask_doze_group_notnull = zvnlp_df['doze_group'].notnull()
@@ -1633,7 +1671,8 @@ def apply_p5_calc_complex_doze():
     (zvnlp_df['dosage_standard_value_str'].str.contains(r'\+', regex=True) | zvnlp_df['dosage_standard_value_str'].str.contains('~'))
     # для второго расчета
 
-    debug, write, b,e, cnt, max_cnt = False, True, 0, zvnlp_df.shape[0]+1, 0, zvnlp_df.shape[0]+1
+    # debug, write, b,e, cnt, max_cnt = False, True, 0, zvnlp_df.shape[0]+1, 0, zvnlp_df.shape[0]+1
+    write, b,e, cnt, max_cnt = True, 0, zvnlp_df.shape[0]+1, 0, zvnlp_df.shape[0]+1
     # Wall time: 1min 18s
     # debug, write, b,e, cnt, max_cnt = True, True, 0, 3000, 0, 10
     # debug, write, b,e, cnt, max_cnt = False, True, 0, zvnlp_df.shape[0]+1, 0, 20
@@ -1644,14 +1683,14 @@ def apply_p5_calc_complex_doze():
     zvnlp_df['proc_tag3'] = None
     for i, row in tqdm(zvnlp_df[mask_dosage_standard_value_isnull].iterrows(), total = zvnlp_df[mask_dosage_standard_value_isnull].shape[0]):
     # for i, row in zvnlp_df.iterrows():
-        if i < b: continue
-        if i > e: break
+        # if i < b: continue
+        # if i > e: break
         if cnt> max_cnt: break
         doze_group, dosage_standard_value_str = \
             row['doze_group'], row['dosage_standard_value_str']
         cnt = proc_complex_doze(i, doze_group, dosage_standard_value_str, cnt, debug=debug, write=write)  
         # break
-    print(cnt) # 1204 с ЕСКЛП jn 10.11.2022 1239 w 08.11.2022 #1
+    # print(cnt) # 1204 с ЕСКЛП jn 10.11.2022 1239 w 08.11.2022 #1
     logger.info("P5: Обработка сложных дозировок - done!")
     logger.info(f"Обработано записей: {cnt}")
 
@@ -2080,7 +2119,8 @@ def parse_znvlp (
     # smnn='last', klp ='last', 
     part = 'all', pickle_file = 'last', excel_save = False, 
         beg_rec = 0, end_rec = np.inf,
-        mode = 'run'):
+        mode = 'run', debug=False
+        ):
     global smnn_list_df, klp_list_dict_df, zvnlp_df, znvlp_date, znvlp_date_format, esklp_date_format #esklp_date
     # if part is not None and part in ['all', 'p1']:
     
@@ -2202,7 +2242,7 @@ def parse_znvlp (
             apply_p3b_tn_mnn()
             apply_p3c_mnn_standard_form_standard()
             apply_p4_calc_volumes()
-            apply_p5_calc_complex_doze()
+            apply_p5_calc_complex_doze(debug)
             apply_p6_calc_doze_ls()
             apply_p7_calc_controllings()
             stat_controllins()
